@@ -36,18 +36,32 @@ def cleanup():
     dist.destroy_process_group()
 
 class Model(nn.Module):
+  """
+  ニューラルネットワーククラス。
 
-  def __init__(self): # Modelのインスタンスを生成する際の特徴を設定
+  解決すべき課題：
+  モデルのレイヤー内にてLinearのArgumentをどうすれば良いか
+  fcの特徴
+  reshapeのargumentw
+  """
+
+  def __init__(self, inputNum, outputNum): # Modelのインスタンスを生成する際の特徴を設定
     super(Model, self).__init__() # ニューラルネットワークの層を作成
-    self.layer1 = nn.Sequential() # Sequentialの中に活性化関数を記述する
-    self.layer2 = nn.Sequential()
-    self.fc = nn.Linear() 
+    self.layer1 = nn.Sequential(
+      nn.Linear(inputNum, outputNum), # 行列の考え方でテンソルの次元を変える。
+      nn.ReLU()
+    ) # Sequentialの中に活性化関数を記述する
+    self.layer2 = nn.Sequential(
+      nn.Linear(),
+      nn.ReLU()
+    )
+    self.fc = nn.Linear(inputNum, outputNum) # fc = Fully Connected Layer 
   
   def forward(self, x): # ModelをTrainさせる際に、インプット（x）を入れたときにアウトプットがいくらになるかを計算
-    out = self.layer1(x)
-    out = self.layer2(out)
-    out = out.reshape(out.size(0), -1)
-    out = self.fc(out)
+    out = self.layer1(x) # 初めのレイヤーのアウトプットを計算
+    out = self.layer2(out) #前レイヤーのアウトプットを入れ、アウトプットを計算
+    out = out.reshape(out.size(0), (-1, )) # output.size(0)に対して形を変える。 -1 : ベクトルにする。
+    out = self.fc(out) # 
     return out
 
 
