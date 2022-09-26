@@ -42,7 +42,7 @@ class Model(nn.Module):
   解決すべき課題：
   モデルのレイヤー内にてLinearのArgumentをどうすれば良いか
   fcの特徴
-  reshapeのargumentw
+  reshapeのargument
   """
 
   def __init__(self, inputNum, outputNum): # Modelのインスタンスを生成する際の特徴を設定
@@ -67,12 +67,13 @@ class Model(nn.Module):
 
 
 def train(args, model, rank, world_size, train_loader, optimizer, epoch, sampler=None):
-    model.train() # Epochの繰り返し処理を行う
-    ddp_loss = torch.zeros(2).to(rank)
+    model.train() #モデルに対して、trainを行うことを伝える。（trainとevaluationで設定を変える必要がある時が存在する）
+    ddp_loss = torch.zeros(2).to(rank) 
     if sampler:
-        sampler.set_epoch(epoch)
+        sampler.set_epoch(epoch) # samplerはDataSetに対してインデックスを振る。
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(rank), target.to(rank)
+
         optimizer.zero_grad()
         output = model(data)
         loss = F.nll_loss(output, target, reduction='sum')
@@ -81,7 +82,8 @@ def train(args, model, rank, world_size, train_loader, optimizer, epoch, sampler
         ddp_loss[0] += loss.item()
         ddp_loss[1] += len(data)
 
-    dist.all_reduce(ddp_loss, op=dist.ReduceOp.SUM)
+    dist.all_reduce(ddp_loss, op=dist.ReduceOp.SUM) # ddp_loss(テンソル)を、全てのマシーンが最後の結果を持つように分配
+
     if rank == 0:
         print('Train Epoch: {} \tLoss: {:.6f}'.format(epoch, ddp_loss[0] / ddp_loss[1]))
 
@@ -112,7 +114,7 @@ def test(model, rank, world_size, test_loader):
 
 def train(gpu, model):
 
-  torch.manual_seed(0)
+  torch.manual_seed(0) # 乱数の生成に
   model = nn.DataParallel(model) #
   torch.cuda.set_device(gpu) #デフォルトのデバイスを定める
   model.cuda(gpu) #モデルを現在用いているデバイスに渡す
