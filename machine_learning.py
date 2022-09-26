@@ -5,10 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-
-
 from torch.optim.lr_scheduler import StepLR
-
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -166,14 +163,15 @@ def fsdp_main(rank, world_size, args):
     transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
-        ]) 
+        ]) # transformsは
 
     dataset1 = datasets.MNIST('../data', train=True, download=True,
                         transform=transform)
     dataset2 = datasets.MNIST('../data', train=False,
-                        transform=transform)
+                        transform=transform) # MNISTとは、 
+    # 
 
-    sampler1 = DistributedSampler(dataset1, rank=rank, num_replicas=world_size, shuffle=True)
+    sampler1 = DistributedSampler(dataset1, rank=rank, num_replicas=world_size, shuffle=True) #datasetをsubset化する。
     sampler2 = DistributedSampler(dataset2, rank=rank, num_replicas=world_size)
 
     train_kwargs = {'batch_size': args.batch_size, 'sampler': sampler1}
@@ -181,11 +179,13 @@ def fsdp_main(rank, world_size, args):
     cuda_kwargs = {'num_workers': 2,
                     'pin_memory': True,
                     'shuffle': False}
+
     train_kwargs.update(cuda_kwargs)
-    test_kwargs.update(cuda_kwargs)
+    test_kwargs.update(cuda_kwargs) # cuda_kwargs dictionaryをtest_kwargsに追加する 
 
     train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
     test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+    
     my_auto_wrap_policy = functools.partial(
             default_auto_wrap_policy, min_num_params=100
         )
