@@ -5,10 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-
-
 from torch.optim.lr_scheduler import StepLR
-
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -26,14 +23,13 @@ wrap,
 )
 
 def setup(rank, world_size):
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_ADDR'] = 'localhost' #Master Address (IP address) を設定
+    os.environ['MASTER_PORT'] = '12355' # Master Portを設定
 
-    # initialize the process group
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    dist.init_process_group("nccl", rank=rank, world_size=world_size) # 処理グループを開始する。ncclでNVIDIAのマルチGPUを可能に
 
 def cleanup():
-    dist.destroy_process_group()
+    dist.destroy_process_group() # 処理グループを終了させる
 
 class Model(nn.Module):
   """
@@ -67,25 +63,29 @@ class Model(nn.Module):
 
 
 def train(args, model, rank, world_size, train_loader, optimizer, epoch, sampler=None):
-    model.train() #モデルに対して、trainを行うことを伝える。（trainとevaluationで設定を変える必要がある時が存在する）
-    ddp_loss = torch.zeros(2).to(rank) 
-    if sampler:
-        sampler.set_epoch(epoch) # samplerはDataSetに対してインデックスを振る。
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(rank), target.to(rank)
+  """train function
+  損失関数
+  """
+  model.train() #モデルに対して、trainを行うことを伝える。（trainとevaluationで設定を変える必要がある時が存在する）
+  ddp_loss = torch.zeros(2).to(rank) 
+  criterion = nn.MSELoss().cuda(gpu) # 損失関数を定める
+  if sampler:
+      sampler.set_epoch(epoch) # samplerはDataSetに対してインデックスを振る。
+  for batch_idx, (data, target) in enumerate(train_loader):
+      data, target = data.to(rank), target.to(rank)
 
-        optimizer.zero_grad()
-        output = model(data)
-        loss = F.nll_loss(output, target, reduction='sum')
-        loss.backward()
-        optimizer.step()
-        ddp_loss[0] += loss.item()
-        ddp_loss[1] += len(data)
+      optimizer.zero_grad()
+      output = model(data)
+      loss = F.nll_loss(output, target, reduction='sum')
+      loss.backward()
+      optimizer.step()
+      ddp_loss[0] += loss.item()
+      ddp_loss[1] += len(data)
 
-    dist.all_reduce(ddp_loss, op=dist.ReduceOp.SUM) # ddp_loss(テンソル)を、全てのマシーンが最後の結果を持つように分配
+  dist.all_reduce(ddp_loss, op=dist.ReduceOp.SUM) # ddp_loss(テンソル)を、全てのマシーンが最後の結果を持つように分配
 
-    if rank == 0:
-        print('Train Epoch: {} \tLoss: {:.6f}'.format(epoch, ddp_loss[0] / ddp_loss[1]))
+  if rank == 0:
+      print('Train Epoch: {} \tLoss: {:.6f}'.format(epoch, ddp_loss[0] / ddp_loss[1]))
 
 
 
@@ -161,66 +161,63 @@ def train(gpu, model):
       print("Training complete in: " + str(datetime.now() - start))
 
 def fsdp_main(rank, world_size, args):
-    setup(rank, world_size) #環境の設定
+    setup(rank, world_size) #機械学習の環境の設定、処理グループによる処理を開始させる。 
 
     transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-        ]) 
+        transforms.ToTensor(),  # PILやImageやndarrayをテンソルに変換 計算する際に同じタイプ（クラス）として扱いたいのでこの操作を行う。
+        transforms.Normalize((0.1307,), (0.3081,)) #テンソルを平均と標準偏差を用いて正規化
+        ]) # transforms.Composeにより複数のtransforms(変換)をまとめる。
 
     dataset1 = datasets.MNIST('../data', train=True, download=True,
                         transform=transform)
     dataset2 = datasets.MNIST('../data', train=False,
-                        transform=transform)
+                        transform=transform) # MNISTとは、公開されているサンプルデータ
+    # データの取得は独自に行う
 
-    sampler1 = DistributedSampler(dataset1, rank=rank, num_replicas=world_size, shuffle=True)
+    sampler1 = DistributedSampler(dataset1, rank=rank, num_replicas=world_size, shuffle=True) #datasetをsubset化(分配)する。
     sampler2 = DistributedSampler(dataset2, rank=rank, num_replicas=world_size)
 
-    train_kwargs = {'batch_size': args.batch_size, 'sampler': sampler1}
-    test_kwargs = {'batch_size': args.test_batch_size, 'sampler': sampler2}
-    cuda_kwargs = {'num_workers': 2,
-                    'pin_memory': True,
-                    'shuffle': False}
-    train_kwargs.update(cuda_kwargs)
-    test_kwargs.update(cuda_kwargs)
+    train_kwargs = {'batch_size': args.batch_size, 'sampler': sampler1} # 後々に入力されるデータをプロパティとしてデータにする
+    test_kwargs = {'batch_size': args.test_batch_size, 'sampler': sampler2} # 同じく
+    cuda_kwargs = {'num_workers': 2, 'pin_memory': True, 'shuffle': False} # 同じく
 
-    train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs)
-    test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs)
+    train_kwargs.update(cuda_kwargs) # cuda_kwargs dictionaryをtrain_kwargsに追加する
+    test_kwargs.update(cuda_kwargs) # cuda_kwargs dictionaryをtest_kwargsに追加する 
+
+    train_loader = torch.utils.data.DataLoader(dataset1,**train_kwargs) # 上記で定めたプロパティをdataset1に対して与える。
+    test_loader = torch.utils.data.DataLoader(dataset2, **test_kwargs) # 同じく
+
     my_auto_wrap_policy = functools.partial(
             default_auto_wrap_policy, min_num_params=100
         )
-    torch.cuda.set_device(rank)
 
+    torch.cuda.set_device(rank) # 用いるGPUを定める。
+    init_start_event = torch.cuda.Event(enable_timing=True) # イベントが時間を測る可動化をenable_timingで定める。
+    init_end_event = torch.cuda.Event(enable_timing=True) #同じく
 
-    init_start_event = torch.cuda.Event(enable_timing=True)
-    init_end_event = torch.cuda.Event(enable_timing=True)
+    model = Model().to(rank) #モデルをrankが参照するGPUに渡す。
+    model = FSDP(model) # モデルをデータ並行処理ワーカーに分配
 
-    model = Model().to(rank)
-
-    model = FSDP(model)
-
-    optimizer = optim.Adadelta(model.parameters(), lr=args.lr)
-
-    scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma)
-    init_start_event.record()
-    for epoch in range(1, args.epochs + 1):
-        train(args, model, rank, world_size, train_loader, optimizer, epoch, sampler=sampler1)
-        test(model, rank, world_size, test_loader)
-        scheduler.step()
+    optimizer = optim.Adam(model.parameters(), lr=0.01) #勾配降下法における計算方法を定める。
+    scheduler = StepLR(optimizer, step_size=1, gamma=args.gamma) #学習率を徐々に下げる。（Gammaにがそのレートを定める）(細かくする。)
+    init_start_event.record() # イベントを記録する
+    for epoch in range(1, args.epochs + 1): #与えられたEpochをもとに、何度このデータをモデルに通すかを決め、その回数分だけ処理する。
+        train(args, model, rank, world_size, train_loader, optimizer, epoch, sampler=sampler1) #上記で定めたtrain関数モデルをtrainする。
+        test(model, rank, world_size, test_loader) #上記で定めたtest関数でモデルをtestする。
+        scheduler.step() # ステップを増やす。
 
     init_end_event.record()
 
-    if rank == 0:
+    if rank == 0: #マルチGPUでの処理が完了し、rank0のGPUに結果が渡されたとき
         print(f"CUDA event elapsed time: {init_start_event.elapsed_time(init_end_event) / 1000}sec")
         print(f"{model}")
 
     if args.save_model:
-        # use a barrier to make sure training is done on all ranks
-        dist_barrier()
+        dist_barrier() # モデルのtrainが全てのランクにおいて完了したことを保証。
         # state_dict for FSDP model is only available on Nightlies for now
-        States = model.state_dict()
+        states = model.state_dict() #
     if rank == 0:
-        torch.save(states, "mnist_cnn.pt")
+        torch.save(states, "mnist_cnn.pt") #trainが終了したモデルをファイルとして保存。.ptという拡張子を用いる。
 
     cleanup()
 
@@ -244,59 +241,7 @@ def evaluate_model(test_dl, model):
     acc = accuracy_score(actuals, predictions)
     return acc
     
-"""
-class Main:
-  def start(self) -> int:
-  # device = 'cpu'
-    device = 'cuda' # Choosing the device we will work on
 
-    numInput = 270
-    numOutput = 13430
-
-    inputList = []
-    targetList = []
-    for j in range(3500): # j should be incremented
-      d = []
-      for i in range(numInput):
-        d.append(random.uniform(-1.0, 1.0))
-      inputList.append(d)
-
-      d = [0.0] * numOutput
-      if inputList[-1][0] > 0:
-        d[0] = 1.0
-      else:
-        d[0] = -1.0
-      targetList.append(d)
-
-      # print(inputList)
-      # print(targetList)
-
-      trainInputs = torch.tensor(inputList)
-      # print(trainInputs)
-      trainInputs = trainInputs.to(device)
-
-      trainTargets = torch.tensor(targetList)
-      # print(trainTargets)
-      trainTargets = trainTargets.to(device)
-
-      net = Net(numInput, numOutput)
-      net = net.to(device)
-      criterion = torch.nn.MSELoss()
-      optimizer = torch.optim.Adam(net.parameters(), lr=0.01)
-
-      for loop in range(1000):
-        optimizer.zero_grad()
-
-        trainOutputs = net(trainInputs)
-        loss = criterion(trainOutputs, trainTargets)
-        print(loss.item())
-
-        loss.backward()
-        optimizer.step()
-
-      return 0
-      
-"""
 if __name__ == '__main__':
 
   dev_gpu0 = torch.device("cuda:0")
