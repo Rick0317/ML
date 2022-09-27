@@ -160,7 +160,7 @@ def train(gpu, model):
   if gpu == 0:
       print("Training complete in: " + str(datetime.now() - start))
 
-def fsdp_main(rank, world_size, args):
+def fsdp_main(rank, world_size, args): #モデルの生成からモデルのtraining、そして保存まで行う。
     setup(rank, world_size) #機械学習の環境の設定、処理グループによる処理を開始させる。 
 
     transform=transforms.Compose([
@@ -248,13 +248,6 @@ if __name__ == '__main__':
   dev_gpu1 = torch.device("cuda:1")
   dev_gpu2 = torch.device("cuda:2")
 
-  array = torch.zeros(3)
-
-  array_0 = array.to(dev_gpu0)# 1個目のgpuを使う
-  array_1 = array.to(dev_gpu1)# 2個目のgpuを使う
-  array_2 = array.to(dev_gpu2)# 3個目のgpuを使う
-
-
   try:
     with open('input.csv', 'r', encoding='shift-jis') as f:
       reader = csv.reader(f) # reader object that reads lines in the give file f
@@ -281,8 +274,7 @@ if __name__ == '__main__':
     print(e)
     sys.exit(0)
   
-  device = 'cuda' # Choosing the device we will work on
-  # Training settings
+  # Training の設定を入力するためのparser
   parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
   parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                       help='input batch size for training (default: 64)')
@@ -300,13 +292,11 @@ if __name__ == '__main__':
                       help='random seed (default: 1)')
   parser.add_argument('--save-model', action='store_true', default=False,
                       help='For Saving the current Model')
-  args = parser.parse_args()
+  args = parser.parse_args() # 入力された情報をargsに格納する。
+
   torch.manual_seed(args.seed)
-  WORLD_SIZE = torch.cuda.device_count()
+  WORLD_SIZE = torch.cuda.device_count() # GPUの数を格納
   mp.spawn(fsdp_main,
       args=(WORLD_SIZE, args),
       nprocs=WORLD_SIZE,
       join=True)
-  model = Model()
-  train(model)
-  torch.save(model.state_dict(), 'model.pth')
