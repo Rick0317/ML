@@ -12,4 +12,6 @@ We use either Data Parallel, Distributed Data Parallel, or Fully Shared Data Par
 
 NVIDIA allows one VM to have multiple GPUs
 
+NCCL(NVIDIA Collective Communication Library) implements multi-GPU and multi-node communication primitives optimized for NVIDIA GPUs and Networking
+
 Essentially, what happens is that the batch size is divided.

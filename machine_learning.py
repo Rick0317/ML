@@ -72,19 +72,19 @@ def train(args, model, rank, world_size, train_loader, optimizer, epoch, sampler
   if sampler:
       sampler.set_epoch(epoch) # samplerはDataSetに対してインデックスを振る。
   for batch_idx, (data, target) in enumerate(train_loader):
-      data, target = data.to(rank), target.to(rank)
+      data, target = data.to(rank), target.to(rank) # rankのGPUにインプットと正解値を与える。
 
-      optimizer.zero_grad()
-      output = model(data)
-      loss = F.nll_loss(output, target, reduction='sum')
-      loss.backward()
-      optimizer.step()
+      optimizer.zero_grad() # 勾配を０にリセット
+      output = model(data) # モデルにインプットを与え、そのアウトプットを格納
+      loss = F.nll_loss(output, target, reduction='sum') # 損失関数、アウトプット、正解値をもとに、損失を計算
+      loss.backward() #損失から重みを調整
+      optimizer.step() # 勾配降下法において坂を降りていく操作。
       ddp_loss[0] += loss.item()
       ddp_loss[1] += len(data)
-
+ 
   dist.all_reduce(ddp_loss, op=dist.ReduceOp.SUM) # ddp_loss(テンソル)を、全てのマシーンが最後の結果を持つように分配
 
-  if rank == 0:
+  if rank == 0: # マルチGPUでの処理が完了し、rank0のGPUに結果が渡された時、以下をprintする。
       print('Train Epoch: {} \tLoss: {:.6f}'.format(epoch, ddp_loss[0] / ddp_loss[1]))
 
 
@@ -243,10 +243,6 @@ def evaluate_model(test_dl, model):
     
 
 if __name__ == '__main__':
-
-  dev_gpu0 = torch.device("cuda:0")
-  dev_gpu1 = torch.device("cuda:1")
-  dev_gpu2 = torch.device("cuda:2")
 
   try:
     with open('input.csv', 'r', encoding='shift-jis') as f:
