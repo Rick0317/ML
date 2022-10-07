@@ -64,11 +64,10 @@ class Model(nn.Module):
 
 def train(args, model, rank, world_size, train_loader, optimizer, epoch, sampler=None):
   """train function
-  損失関数
   """
   model.train() #モデルに対して、trainを行うことを伝える。（trainとevaluationで設定を変える必要がある時が存在する）
   ddp_loss = torch.zeros(2).to(rank) 
-  criterion = nn.MSELoss().cuda(gpu) # 損失関数を定める
+  criterion = nn.MSELoss().to(rank) # 損失関数を定める
   if sampler:
       sampler.set_epoch(epoch) # samplerはDataSetに対してインデックスを振る。
   for batch_idx, (data, target) in enumerate(train_loader):
