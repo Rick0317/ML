@@ -1,6 +1,23 @@
 # Machine Learning
+[PyTorch Official site](https://pytorch.org/)
 
 ## Math behind Machine Learning (PyTorch)
+### PCA 
+In PCA, we measure how much each parameter contributes to the variation of data.  
+We draw PC lines and minimize the sum of the squared distances from each data sample.
+![pca image](https://github.com/Rick0317/ML/blob/master/images/pca_image.jpg)
+## Data Arrangement
+
+### First, we want to load the data from a csv file.
+We use a build-in function "raw_data = open({file_name}, 'rt')" to open the file.('rt' = reading text, 'wt' = writing text)    
+If the file contains a header, we can skip it by "next(raw_data)"  
+Next, we use "csv.reader()" to read the raw data. This return a reader object so to use it, we change its type to list.  
+
+### Next, we want to rearrange the shape of the table. (PCA)
+In our case of nse_data.csv, we deleted the date column. I used excel to import the data and deleted the column and saved the file as a new file. In the process, we separated the input and target data.  
+Now, we will prepare our data, which is the most important step.  
+We use PCA to select the features of input data we will use.  
+
 
 
 ## Using pytorch to achieve Distributed Data Parallel.

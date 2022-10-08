@@ -244,7 +244,7 @@ def evaluate_model(test_dl, model):
 if __name__ == '__main__':
 
   try:
-    with open('input.csv', 'r', encoding='shift-jis') as f:
+    with open('nse_input.csv', 'r', encoding='shift-jis') as f:
       reader = csv.reader(f) # reader object that reads lines in the give file f
       next(reader)           # Skipping the first line of the file
       inputList = []
@@ -258,7 +258,7 @@ if __name__ == '__main__':
 
 
   try:
-    with open('target.csv', 'r', encoding='shift-jis') as f:
+    with open('nse_target.csv', 'r', encoding='shift-jis') as f:
       reader = csv.reader(f)
       next(reader)
       targetList = []
