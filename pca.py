@@ -1,5 +1,6 @@
 import numpy as np
 import csv
+from sklearn.decomposition import PCA
 
 file1 = "nse_input.csv"
 file2 = "nse_target.csv"
@@ -13,4 +14,6 @@ x = list(reader)
 y = list(reader2)
 input_data = np.array(x).astype('float')
 target_data = np.array(y).astype('float')
-print(input_data[:5], target_data[:5])
+pca = PCA(n_components=6)
+pca.fit(input_data)
+print(pca.explained_variance_ratio_)

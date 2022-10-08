@@ -17,7 +17,7 @@ Next, we use "csv.reader()" to read the raw data. This return a reader object so
 In our case of nse_data.csv, we deleted the date column. I used excel to import the data and deleted the column and saved the file as a new file. In the process, we separated the input and target data.  
 Now, we will prepare our data, which is the most important step.  
 We use PCA to select the features of input data we will use.  
-
+The PCA module from sklearn.decomposition is used. It calculates the variance of the given data. 
 
 
 ## Using pytorch to achieve Distributed Data Parallel.
