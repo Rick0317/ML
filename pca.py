@@ -2,8 +2,8 @@ import numpy as np
 import csv
 from sklearn.decomposition import PCA
 
-file1 = "nse_input.csv"
-file2 = "nse_target.csv"
+file1 = "data/nse_input.csv"
+file2 = "data/nse_target.csv"
 raw_data = open(file1, "rt")
 raw_data2 = open(file2, "rt")
 next(raw_data)

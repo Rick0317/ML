@@ -30,13 +30,15 @@ The PCA module from sklearn.decomposition is used. It calculates the variance of
 ## Model 
 
 ### What kind of Model to use
-
+The neural network model you should use depends on what you want to achieve. 
 
 
 ### Layer
 Input Layer, Hidden Layer, Output Layer    
 Fully connected layer: Layer for which all the inputs from one layer are connected to every activation unit of the next layer with weights  
-Ex) nn.Linear() which changes the dimensionality of the input as it yields the output.
+Ex) nn.Linear() which changes the dimensionality of the input as it yields the output.  
+  
+There is no right number of layers you should use.
 
 ### CNN (Convolution Neural Network)
 To identify the image that is difficult for a computer to do so, we use CNN, which is a certain set of layers.  
