@@ -1,26 +1,16 @@
 import torch.nn as nn
 
-class Model(nn.Module):
+class Net(nn.Module):
 
-  def __init__(self, input_data, target):
-    super(Model, self).__init__()
-    self.layer1 = nn.Sequential(
-      nn.Sigmoid(),
-      nn.ReLU(), 
-      nn.Sigmoid(),
-      nn.ReLU()
-    )
-    self.layer2 = nn.Sequential(
-      nn.Sigmoid(),
-      nn.ReLU()
-    )
-    self.fc = nn.Sigmoid()
+    def __init__(self):
+        super().__init__()
+        self.fc = nn.Linear(6, 1, bias=True)
 
+        nn.init.constant_(self.fc.weight, 0.0)
+        nn.init.constant_(self.fc.bias, 0.0)
 
-  def forward(self, x):
-    out = self.layer1(x)
-    out = self.layer2(out)
-    out = self.fc(out)
-    return out
+    def forward(self, x):
+        return self.fc(x)
+
 
   

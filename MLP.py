@@ -3,47 +3,46 @@ import torch.nn as nn
 import numpy as np
 from data_loader import Data_loader
 from data_modifier import Modifier
-from Model import Model
-import torch.nn.functional as F
-import torch.distributed as dist
+from Model import Net
 import torch.optim as optim
 
-def train(model, input, target, optimizer, epoch_size):
+def train(model, data, target, optimizer, epoch_size):
   """
   train the given model with input and target data
   """
-  model.train()
-  ddp_loss = torch.zeros(2)
   criterion = nn.MSELoss()
+  model.train()
   for epoch in range(epoch_size):
     optimizer.zero_grad()
     output = model(data)
     loss = criterion(output, target)
     loss.backward()
     optimizer.step()
-    ddp_loss[0] += loss.item()
-    ddp_loss[1] += len(data)
-    print(ddp_loss[0], ddp_loss[1])
-  dist.all_reduce(ddp_loss, op=dist.ReduceOp.SUM)
-  print('Train Epoch: {} \tLoss: {:.6f}'.format(epoch, ddp_loss[0] / ddp_loss[1]))
+    #print(f'【EPOCH {epoch}】 loss : {loss.item():.5f}')
 
 def evaluation(model):
   """
   evaluate the trained model.
   """
-
-  return accuracy
+  pass
 
 
 if __name__ == "__main__":
   data = Data_loader("data/nse_input.csv", "data/nse_target.csv")
   input_array = data.give_array()[0]
   output_array = data.give_array()[1]
+  print("The type of input of the array:", type(input_array[0][0]))
+  print("The type of output of the array:", type(output_array[0][0]))
   modifier = Modifier(input_array, data.do_pca())
   input_array = modifier.modify()
-  model = Model(input_array, output_array)
+  input_array = torch.tensor(input_array)
+  output_array = torch.tensor(output_array)
+  model = Net()
   optimizer = optim.Adam(model.parameters(), lr=0.01)
-  train(model, input_array, output_array, optimizer,5)
+  train(model, input_array, output_array, optimizer,1000)
+  pred = model(torch.tensor(data.give_array()[2]))
+  print(pred)
+  print(data.give_array()[3])
   
   
 

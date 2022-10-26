@@ -23,9 +23,11 @@ class Data_loader():
     reader2 = csv.reader(raw_data2, delimiter=',')
     x = list(reader)
     y = list(reader2)
-    input_data = np.array(x).astype('float')
-    target_data = np.array(y).astype('float')
-    return [input_data, target_data]
+    input_data = np.array(x).astype('float32')[:150, :]
+    target_data = np.array(y).astype('float32')[:150, :]
+    test_input = np.array(x).astype('float32')[:50, :]
+    test_target = np.array(x).astype('float32')[:50, :]
+    return [input_data, target_data, test_input, test_target]
 
 
   def do_pca(self):
@@ -40,8 +42,8 @@ class Data_loader():
     reader2 = csv.reader(raw_data2, delimiter=',')
     x = list(reader)
     y = list(reader2)
-    input_data = np.array(x).astype('float')
-    target_data = np.array(y).astype('float')
+    input_data = np.array(x).astype('float32')
+    target_data = np.array(y).astype('float32')
     pca = PCA(n_components=6)
     pca.fit(input_data)
     
